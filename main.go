@@ -14,7 +14,6 @@ import (
 	"net/http"
 
 	"github.com/panjf2000/ants"
-	vegeta "github.com/tsenart/vegeta/lib"
 )
 
 // var ch = make(chan byte)
@@ -24,7 +23,7 @@ var url string = "http://172.16.0.30:8080/v3.0/media"
 
 // var url string = "http://127.0.0.1:8080/v3.0/media"
 var AntsSize int = 500
-var freq int = 200
+var n int = 100000
 
 // var ch = make(chan byte)
 
@@ -113,105 +112,9 @@ func f(file *os.File) error {
 	defer resp.Body.Close()
 	return err
 }
-func LoadTestVegeta(url string, freq int, filePath string) {
-
-	// Open the file
-	file, err := os.Open(filePath)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	// Close the file later
-	defer file.Close()
-	// Buffer to store our request body as bytes
-	var requestBody bytes.Buffer
-
-	// Create a multipart writer
-	multiPartWriter := multipart.NewWriter(&requestBody)
-
-	// Initialize the file field
-	fileWriter, err := multiPartWriter.CreateFormFile("file", "image.jpg")
-	if err != nil {
-		log.Fatalln(err)
-
-	}
-
-	// Copy the actual file content to the field field's writer
-	_, err = io.Copy(fileWriter, file)
-	if err != nil {
-		log.Fatalln(err)
-
-	}
-
-	// Populate other fields
-	fieldWriter, err := multiPartWriter.CreateFormField("source")
-	if err != nil {
-		log.Fatalln(err)
-
-	}
-
-	_, err = fieldWriter.Write([]byte("aws"))
-	if err != nil {
-		log.Fatalln(err)
-
-	}
-
-	// Populate other fields
-	fieldWriter0, err := multiPartWriter.CreateFormField("category")
-	if err != nil {
-		log.Fatalln(err)
-
-	}
-
-	_, err = fieldWriter0.Write([]byte("default"))
-	if err != nil {
-		log.Fatalln(err)
-
-	}
-
-	// Populate other fields
-	fieldWriter1, err := multiPartWriter.CreateFormField("format")
-	if err != nil {
-		log.Fatalln(err)
-
-	}
-
-	_, err = fieldWriter1.Write([]byte("jpg"))
-	if err != nil {
-		log.Fatalln(err)
-
-	}
-
-	// We completed adding the file and the fields, let's close the multipart writer
-	// So it writes the ending boundary
-	multiPartWriter.Close()
-	rate := vegeta.Rate{Freq: freq, Per: time.Second}
-	duration := 4 * time.Second
-	if err != nil {
-		fmt.Errorf("%s", err)
-	}
-	targeter := vegeta.NewStaticTargeter(vegeta.Target{
-		Method: "POST",
-		URL:    url,
-		Body:   (&requestBody).Bytes(),
-		Header: http.Header{
-			"Content-Type": []string{multiPartWriter.FormDataContentType()},
-		},
-	})
-	attacker := vegeta.NewAttacker()
-
-	var metrics vegeta.Metrics
-	for res := range attacker.Attack(targeter, rate, duration, "Big Bang!") {
-		metrics.Add(res)
-	}
-	metrics.Close()
-
-	fmt.Printf("99th percentile: %s\n", metrics.Latencies.P99)
-}
 
 func main() {
-	// LoadTestVegeta(url, freq, "image.jpg")
 
-	// return
 	// Limit the number of spare OS threads to just 1
 	runtime.GOMAXPROCS(6)
 
@@ -220,7 +123,6 @@ func main() {
 	runtime.ReadMemStats(&m0)
 
 	t0 := time.Now().UnixNano()
-	var n int = 100000
 	var wg sync.WaitGroup
 	p, _ := ants.NewPool(AntsSize, ants.WithNonblocking(false), ants.WithPanicHandler(func(data interface{}) {
 		fmt.Errorf("%s\n", data)
